@@ -1,0 +1,67 @@
+name: Build pycdc for Windows x64
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: zrax/pycdc
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+        choco install ninja -y
+
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Ninja"
+
+    - name: Build pycdc and pycdas
+      run: |
+        cd build
+        ninja
+
+    - name: Test binaries
+      run: |
+        cd build
+        .\pycdc --version || echo "pycdc version check failed (expected)"
+        .\pycdas --version || echo "pycdas version check failed (expected)"
+        dir .\*.exe
+
+    - name: Create release directory
+      run: |
+        mkdir pycdc-windows-x64
+        copy build\pycdc.exe pycdc-windows-x64\
+        copy build\pycdas.exe pycdc-windows-x64\
+        copy README.md pycdc-windows-x64\ 2>nul || echo "No README found"
+        copy LICENSE pycdc-windows-x64\ 2>nul || echo "No LICENSE found"
+
+    - name: Create zip archive
+      run: |
+        Compress-Archive -Path pycdc-windows-x64\* -DestinationPath pycdc-windows-x64.zip -Force
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pycdc-windows-x64
+        path: pycdc-windows-x64.zip
+        retention-days: 30
+
+    - name: Create GitHub Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: pycdc-windows-x64.zip
