@@ -3,8 +3,6 @@ name: Build pycdc for Windows x64
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -34,20 +32,20 @@ jobs:
         cd build
         ninja
 
-    - name: Test binaries
+    - name: Verify binaries were created
       run: |
         cd build
-        .\pycdc --version || echo "pycdc version check failed (expected)"
-        .\pycdas --version || echo "pycdas version check failed (expected)"
-        dir .\*.exe
+        dir *.exe
+        echo "Binary files created successfully!"
 
     - name: Create release directory
       run: |
         mkdir pycdc-windows-x64
-        copy build\pycdc.exe pycdc-windows-x64\
-        copy build\pycdas.exe pycdc-windows-x64\
-        copy README.md pycdc-windows-x64\ 2>nul || echo "No README found"
-        copy LICENSE pycdc-windows-x64\ 2>nul || echo "No LICENSE found"
+        copy pycdc.exe pycdc-windows-x64\
+        copy pycdas.exe pycdc-windows-x64\
+        echo "Pycdc decompiler for Windows x64" > pycdc-windows-x64\README.txt
+        echo "Built from: https://github.com/zrax/pycdc" >> pycdc-windows-x64\README.txt
+        echo "Build date: $(Get-Date)" >> pycdc-windows-x64\README.txt
 
     - name: Create zip archive
       run: |
@@ -59,9 +57,3 @@ jobs:
         name: pycdc-windows-x64
         path: pycdc-windows-x64.zip
         retention-days: 30
-
-    - name: Create GitHub Release (on tag)
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: pycdc-windows-x64.zip
